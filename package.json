@@ -1,19 +1,40 @@
 {
   "name": "electron-trpc",
   "version": "1.0.0",
-  "description": "trpc integration with electron ipc main and renderer process",
+  "description": "tRPC integration for Electron with IPC communication",
   "keywords": [
     "electron",
     "trpc"
   ],
   "repository": {
     "type": "git",
-    "url": "."
+    "url": "https://github.com/neerajshdev/electron-trpc"
   },
   "license": "ISC",
   "author": "neerajshdev@github.com",
   "type": "commonjs",
+  "main": "./dist/mainHandler.js",
+  "types": "./dist/mainHandler.d.ts",
+  "exports": {
+    "./mainHandler": {
+      "types": "./dist/mainHandler.d.ts",
+      "default": "./dist/mainHandler.js"
+    },
+    "./ipcLink": {
+      "types": "./dist/ipcLink.d.ts",
+      "default": "./dist/ipcLink.js"
+    },
+    "./expose": {
+      "types": "./dist/expose.d.ts",
+      "default": "./dist/expose.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
