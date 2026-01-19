@@ -1,0 +1,27 @@
+{
+  "name": "electron-trpc",
+  "version": "1.0.0",
+  "description": "trpc integration with electron ipc main and renderer process",
+  "keywords": [
+    "electron",
+    "trpc"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "license": "ISC",
+  "author": "neerajshdev@github.com",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@trpc/client": "^11.8.1",
+    "@trpc/server": "^11.8.1"
+  }
+}
