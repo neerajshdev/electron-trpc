@@ -1,6 +1,6 @@
 {
-  "name": "electron-trpc",
-  "version": "1.0.0",
+  "name": "@neerajshdev/electron-trpc",
+  "version": "1.0.1",
   "description": "tRPC integration for Electron with IPC communication",
   "keywords": [
     "electron",
@@ -12,10 +12,17 @@
   },
   "license": "ISC",
   "author": "neerajshdev@github.com",
-  "type": "commonjs",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/mainHandler.js",
   "types": "./dist/mainHandler.d.ts",
   "exports": {
+    ".": {
+      "types": "./dist/mainHandler.d.ts",
+      "default": "./dist/mainHandler.js"
+    },
     "./mainHandler": {
       "types": "./dist/mainHandler.d.ts",
       "default": "./dist/mainHandler.js"
@@ -39,9 +46,7 @@
   },
   "devDependencies": {
     "electron": "^40.0.0",
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
+    "typescript": "^5.9.3",
     "@trpc/client": "^11.8.1",
     "@trpc/server": "^11.8.1"
   }

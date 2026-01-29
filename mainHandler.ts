@@ -24,6 +24,8 @@ export function registerTrpcHandler<TAppRouter extends AnyRouter>(
 
         throw new Error(`Unknown tRPC type: ${type}`);
     });
+
+    console.log("Registered IPC handler for tRPC");
 }
 
 export function registerTrpcSubscriptionHandler<TAppRouter extends AnyRouter>(

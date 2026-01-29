@@ -1,8 +1,6 @@
 import { contextBridge } from "electron";
 import { ipcRenderer } from "electron";
 
-
-
 export function exposeTrpc() {
     contextBridge.exposeInMainWorld("trpc", {
         call: async (req: any) => {
