@@ -9,16 +9,21 @@ export function ipcLink<TRouter extends AnyRouter>(): TRPCLink<TRouter> {
                 return next(op);
             }
 
+
             return observable((observer) => {
+                let serializedInput: string | undefined = undefined;
+                if (op.input !== undefined) {
+                    serializedInput = JSON.stringify(op.input);
+                }
                 // @ts-ignore
                 window.trpc
                     .call({
                         path: op.path,
-                        input: op.input,
+                        input: serializedInput,
                         type: op.type,
                     })
                     .then((data: any) => {
-                        observer.next({ result: { data: data } });
+                        observer.next({ result: { data: deserializeData(data) } });
                         observer.complete();
                     })
                     .catch((e: any) => {
@@ -55,7 +60,7 @@ export function ipcSubscriptionLink<
 
             try {
                 observer.next({
-                    result: { data },
+                    result: { data: deserializeData(data) },
                 });
             } catch (e) {
                 console.error("Error in subscription onData dispatcher:", e);
@@ -110,7 +115,7 @@ export function ipcSubscriptionLink<
                     window.trpcSub.start({
                         id,
                         path: op.path,
-                        input: op.input,
+                        input: op.input ? JSON.stringify(op.input) : undefined,
                     });
                 } catch (e) {
                     observers.delete(id);
@@ -130,4 +135,13 @@ export function ipcSubscriptionLink<
             });
         };
     };
+}
+
+
+function deserializeData(data: any): any { 
+    if (data === null || data === undefined) {
+        return data;
+    } else { 
+        return JSON.parse(data);
+    }
 }

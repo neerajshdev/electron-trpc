@@ -4,52 +4,61 @@ import { ipcMain } from "electron";
 // windowId → subscriptionId → unsubscribe()
 const subs = new Map<number, Map<string, () => void>>();
 
-export function registerTrpcHandler<TAppRouter extends AnyRouter>(
-    router: TAppRouter,
-) {
-    const caller = router.createCaller({});
+async function serializeData(result: any): Promise<string | undefined> {
+    if (result === undefined) {
+        return undefined;
+    } else if (result instanceof Promise) {
+        const awaitedResult = await result;
+        return JSON.stringify(awaitedResult);
+    } else {
+        return JSON.stringify(result);
+    }
+}
 
-    ipcMain.handle("trpc", async (_event, arg) => {
-        const { path, type, input } = arg;
-
-        if (type === "query") {
-            // @ts-ignore
-            return caller[path](input);
+export function registerTrpcHandler<TAppRouter extends AnyRouter>(router: TAppRouter) {
+    ipcMain.handle("trpc", async (event, arg) => {
+        const caller = router.createCaller(event, {});
+        const { path, input } = arg;
+        let parsedInput = undefined;
+        if (input) {
+            parsedInput = JSON.parse(input);
         }
 
-        if (type === "mutation") {
-            // @ts-ignore
-            return caller[path](input);
-        }
-
-        throw new Error(`Unknown tRPC type: ${type}`);
+        // @ts-ignore
+        const result = caller[path](parsedInput);
+        return await serializeData(result);
     });
 
     console.log("Registered IPC handler for tRPC");
 }
 
-export function registerTrpcSubscriptionHandler<TAppRouter extends AnyRouter>(
-    router: TAppRouter,
-) {
+export function registerTrpcSubscriptionHandler<TAppRouter extends AnyRouter>(router: TAppRouter) {
     ipcMain.on("trpc:sub:start", async (event, payload) => {
         const { id, path, input } = payload;
-        console.log("Received subscription start: ", id, path, input);
+
+        let parsedInput = undefined;
+        if (input) {
+            parsedInput = JSON.parse(input);
+        }
 
         const webContents = event.sender;
         if (!webContents) {
             return;
         }
 
-        const caller = router.createCaller({});
+        const caller = router.createCaller(event, {});
 
         // @ts-ignore
-        const observable = await caller[path](input);
-        console.log("Starting subscription ", id, path, input);
+        const observable = await caller[path](parsedInput);
+        console.log("Starting subscription ", id, path, parsedInput);
 
         const subscription = observable.subscribe({
             // @ts-ignore
-            next(data) {
-                webContents.send("trpc:sub:data", { id, data });
+            async next(data) {
+                webContents.send("trpc:sub:data", {
+                    id,
+                    data: await serializeData(data),
+                });
             },
             // @ts-ignore
             error(error) {
