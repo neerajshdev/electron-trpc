@@ -1,6 +1,10 @@
-import { type TRPCLink, TRPCClientError } from "@trpc/client";
-import type { AnyRouter } from "@trpc/server";
-import { observable } from "@trpc/server/observable";
+import {type TRPCLink, TRPCClientError} from "@trpc/client";
+import type {AnyRouter} from "@trpc/server";
+import {observable} from "@trpc/server/observable";
+
+function generateRequestId(): string {
+    return crypto.randomUUID();
+}
 
 export function ipcLink<TRouter extends AnyRouter>(): TRPCLink<TRouter> {
     return () => {
@@ -9,27 +13,50 @@ export function ipcLink<TRouter extends AnyRouter>(): TRPCLink<TRouter> {
                 return next(op);
             }
 
-
             return observable((observer) => {
                 let serializedInput: string | undefined = undefined;
                 if (op.input !== undefined) {
                     serializedInput = JSON.stringify(op.input);
                 }
+                
+                const signal = op.signal;
+                const requestId = generateRequestId();
+
+                // Listen for abort events from client
+                const abortHandler = () => {
+                    // Notify main process to abort via IPC
+                    // @ts-ignore
+                    window.trpc.abort?.({ requestId });
+                    observer.error(new TRPCClientError("Request aborted"));
+                };
+                
+                signal?.addEventListener?.('abort', abortHandler);
+
                 // @ts-ignore
                 window.trpc
                     .call({
+                        requestId,
                         path: op.path,
                         input: serializedInput,
                         type: op.type,
                     })
                     .then((data: any) => {
+                        signal?.removeEventListener?.('abort', abortHandler);
                         observer.next({ result: { data: deserializeData(data) } });
                         observer.complete();
                     })
                     .catch((e: any) => {
+                        signal?.removeEventListener?.('abort', abortHandler);
                         observer.error(e);
                         observer.complete();
                     });
+
+                return () => {
+                    signal?.removeEventListener?.('abort', abortHandler);
+                    // Notify main process on cleanup
+                    // @ts-ignore
+                    window.trpc.abort?.({ requestId });
+                };
             });
         };
     };

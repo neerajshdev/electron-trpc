@@ -1,10 +1,12 @@
-import { contextBridge } from "electron";
-import { ipcRenderer } from "electron";
+import {contextBridge, ipcRenderer} from "electron";
 
 export function exposeTrpc() {
     contextBridge.exposeInMainWorld("trpc", {
         call: async (req: any) => {
             return await ipcRenderer.invoke("trpc", req);
+        },
+        abort: (payload: any) => {
+            ipcRenderer.send("trpc:abort", payload);
         }
     });
 }

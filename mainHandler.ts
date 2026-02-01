@@ -1,8 +1,11 @@
-import type { AnyRouter } from "@trpc/server";
-import { ipcMain } from "electron";
+import type {AnyRouter} from "@trpc/server";
+import {ipcMain} from "electron";
 
 // windowId → subscriptionId → unsubscribe()
 const subs = new Map<number, Map<string, () => void>>();
+
+// requestId → abort controller
+const abortControllers = new Map<string, AbortController>();
 
 async function serializeData(result: any): Promise<string | undefined> {
     if (result === undefined) {
@@ -17,16 +20,56 @@ async function serializeData(result: any): Promise<string | undefined> {
 
 export function registerTrpcHandler<TAppRouter extends AnyRouter>(router: TAppRouter) {
     ipcMain.handle("trpc", async (event, arg) => {
-        const caller = router.createCaller(event, {});
-        const { path, input } = arg;
+        const { requestId, path, input } = arg;
+        
+        // Create abort controller for this request
+        const abortController = new AbortController();
+        if (requestId) {
+            abortControllers.set(requestId, abortController);
+        }
+        
+        // Create context with signal for procedures to access
+        const ctx = {
+            signal: abortController.signal,
+            event
+        };
+        
+        const caller = router.createCaller(ctx);
         let parsedInput = undefined;
         if (input) {
             parsedInput = JSON.parse(input);
         }
 
+        // Check abort before calling
+        if (abortController.signal.aborted) {
+            throw new DOMException('Aborted', 'ABORT_ERR');
+        }
+
         // @ts-ignore
         const result = caller[path](parsedInput);
+        
+        // Handle promise-based result with abort checking
+        if (result instanceof Promise) {
+            const awaitResult = await result;
+            
+            // Check after completion
+            if (abortController.signal.aborted) {
+                throw new DOMException('Aborted', 'ABORT_ERR');
+            }
+            
+            return await serializeData(awaitResult);
+        }
+        
         return await serializeData(result);
+    });
+
+    // Handle abort requests
+    ipcMain.on("trpc:abort", (_event, { requestId }) => {
+        const controller = abortControllers.get(requestId);
+        if (controller) {
+            controller.abort();
+            abortControllers.delete(requestId);
+        }
     });
 
     console.log("Registered IPC handler for tRPC");
